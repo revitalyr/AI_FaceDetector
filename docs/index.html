@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glance Raw Viewer Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 2.2em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1em;
+            margin-bottom: 24px;
+        }
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #e0d8f0;
+            margin-bottom: 24px;
+            gap: 4px;
+        }
+        .nav-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f0edf6;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.9em;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+        .nav-tab:hover:not(.active) {
+            transform: translateY(-2px);
+            background: #e5def0;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .diagram-container {
+            position: relative;
+            overflow-x: auto;
+            overflow-y: auto;
+            min-height: 320px;
+            border: 1px solid #e0d8f0;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 24px;
+            background: #fafafe;
+        }
+        .mermaid-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #999;
+            font-style: italic;
+            z-index: 1;
+            pointer-events: none;
+            display: none;
+        }
+        .scale-controls {
+            position: sticky;
+            top: 8px;
+            float: right;
+            z-index: 1000;
+            background: white;
+            padding: 6px 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .scale-button {
+            padding: 4px 10px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .scale-button:hover { background: #f0edf6; }
+        .scale-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            min-width: 36px;
+            text-align: center;
+        }
+        .feature-section {
+            margin-bottom: 24px;
+        }
+        .feature-section h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 1.15em;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 6px 0;
+            border-bottom: 1px solid #f0edf6;
+        }
+        .feature-list li::before {
+            content: "\2705";
+            margin-right: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #e0d8f0;
+        }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) { background: #f8f9fe; }
+        code {
+            background: #f0edf6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .badge-core { background: #667eea; color: white; }
+        .badge-ui { background: #28a745; color: white; }
+        .badge-io { background: #ffc107; color: #333; }
+        .badge-plugin { background: #6c757d; color: white; }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .card { padding: 16px; }
+            h1 { font-size: 1.5em; }
+            .nav-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .nav-tab { font-size: 0.8em; padding: 8px 12px; }
+            .scale-controls { padding: 4px 6px; }
+            .scale-button { padding: 3px 7px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h1>Glance Raw Viewer</h1>
+        <p class="subtitle">Desktop application for RAW/standard image viewing with GPU shader-based processing, face detection, and background removal</p>
+
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="overview">Overview</div>
+            <div class="nav-tab" data-tab="architecture">Architecture</div>
+            <div class="nav-tab" data-tab="dataflow">Data Flow</div>
+            <div class="nav-tab" data-tab="coretypes">Core Types</div>
+            <div class="nav-tab" data-tab="testing">Testing</div>
+            <div class="nav-tab" data-tab="build">Build and Deploy</div>
+        </div>
+
+        <!-- ===================== OVERVIEW ===================== -->
+        <div id="overview" class="tab-content active">
+            <h2>System Overview</h2>
+            <p>Desktop application for viewing, processing, and analyzing RAW and standard-format images. Uses OpenCV DNN (YuNet model) for face detection, u2net ONNX for background removal, and GLSL shaders for image adjustment operations through a Qt6 UI with OpenGL rendering.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering system overview...</div>
+                <div class="mermaid" id="overview-diagram">
+graph TD
+    A["Glance Raw Viewer"]
+    A --> B["Qt6 GUI Window"]
+    A --> C["OpenGL Image View"]
+    A --> D["Image Processing"]
+    A --> E["Face Detection"]
+    A --> F["Background Removal"]
+    A --> G["RAW File Decoding"]
+    D --> H["CPU ImageProcessor"]
+    D --> I["GPU Shader Pipeline"]
+    E --> J["OpenCV DNN YuNet"]
+    E --> K["PostProcessing Strategy"]
+    F --> L["OpenCV DNN u2net"]
+    G --> M["LibRaw RAW Decoder"]
+    style A fill:#667eea,color:#fff
+    style B fill:#667eea,color:#fff
+    style C fill:#28a745,color:#fff
+    style D fill:#667eea,color:#fff
+    style E fill:#ffc107,color:#333
+    style F fill:#ffc107,color:#333
+    style G fill:#6c757d,color:#fff
+    style H fill:#6c757d,color:#fff
+    style I fill:#28a745,color:#fff
+    style J fill:#dc3545,color:#fff
+    style K fill:#6c757d,color:#fff
+    style L fill:#dc3545,color:#fff
+    style M fill:#6c757d,color:#fff
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Technology Stack</h3>
+                <table>
+                    <tr><th>Component</th><th>Technology</th><th>Version</th></tr>
+                    <tr><td>Language</td><td>C++ Modules</td><td>C++23</td></tr>
+                    <tr><td>GUI Framework</td><td>Qt6</td><td>6.2+ (Core, Widgets, OpenGL, OpenGLWidgets, Concurrent, PrintSupport, Network)</td></tr>
+                    <tr><td>Computer Vision</td><td>OpenCV</td><td>4.8+ (core, imgproc, dnn, photo, objdetect)</td></tr>
+                    <tr><td>RAW Support</td><td>LibRaw</td><td>0.21+</td></tr>
+                    <tr><td>Build System</td><td>CMake</td><td>3.28+ (required for C++23 modules)</td></tr>
+                    <tr><td>Testing</td><td>Catch2</td><td>v3</td></tr>
+                    <tr><td>Graphics API</td><td>OpenGL</td><td>3.3 core / 4.3 compute</td></tr>
+                    <tr><td>Package Manager</td><td>vcpkg</td><td>Recommended</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Key Features</h3>
+                <ul class="feature-list">
+                    <li>GPU-accelerated real-time image adjustments via OpenGL shaders (exposure, contrast, gamma, temperature, grayscale, detail enhancement)</li>
+                    <li>Multi-strategy face detection using OpenCV DNN YuNet with adaptive thresholds, CLAHE enhancement, extended rotation, weighted box fusion, NMS</li>
+                    <li>Background removal using u2netp ONNX model via OpenCV DNN</li>
+                    <li>Non-destructive editing with full undo/redo stack (EditStack, EditOperation)</li>
+                    <li>RAW camera format support via LibRaw with auto-rotation, metadata extraction</li>
+                    <li>LUT color grading (CubeLUT .cube format with trilinear interpolation)</li>
+                    <li>Split-screen before/after comparison with draggable divider</li>
+                    <li>GPU compute shader histogram calculation</li>
+                    <li>Plugin architecture for extensible image processor and face detector backends</li>
+                    <li>Asynchronous multi-threaded image loading with LRU caching</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ===================== ARCHITECTURE ===================== -->
+        <div id="architecture" class="tab-content">
+            <h2>Architecture</h2>
+            <p>The application follows a modular layered architecture with three main layers: Core (business logic), IO (input/output), and UI (presentation). C++23 modules enforce clear dependency boundaries.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering component diagram...</div>
+                <div class="mermaid" id="architecture-diagram">
+graph TD
+    subgraph UI["UI Layer"]
+        MW["MainWindow<br/>Sliders, Menus, Views"]
+        IVW["ImageViewWidget<br/>OpenGL Renderer"]
+        SSW["SplitScreenWidget<br/>Before/After"]
+        HW["HistogramWidget"]
+        CS["CustomSlider"]
+        FRU["FaceRenderingUtils"]
+    end
+    subgraph Core["Core Layer"]
+        ORC["Orchestrator<br/>Central Facade"]
+        IP["ImageProcessor<br/>CPU Processing"]
+        FD["FaceDetector<br/>Multi-Strategy DNN"]
+        SG["Segmenter<br/>u2net ONNX"]
+        ES["EditStack<br/>Undo/Redo"]
+        EO["ExposureOperation"]
+        LUT["CubeLUT"]
+        PPS["PostProcessingStrategy"]
+        PM["PluginManager"]
+        PC["PluginConfiguration"]
+    end
+    subgraph IO["IO Layer"]
+        IR["ImageReader<br/>Qt + LibRaw"]
+        AIL["AsyncImageLoader<br/>ThreadPool + Cache"]
+    end
+    MW --> ORC
+    MW --> IVW
+    MW --> SSW
+    IVW --> FRU
+    ORC --> IP
+    ORC --> FD
+    ORC --> SG
+    ORC --> ES
+    ORC --> PM
+    ORC --> PC
+    FD --> PPS
+    ES --> EO
+    AIL --> IR
+    IR -.->|RAW Files| LUT
+    style ORC fill:#667eea,color:#fff
+    style IP fill:#667eea,color:#fff
+    style FD fill:#ffc107,color:#333
+    style SG fill:#ffc107,color:#333
+    style ES fill:#6c757d,color:#fff
+    style MW fill:#28a745,color:#fff
+    style IVW fill:#28a745,color:#fff
+    style SSW fill:#28a745,color:#fff
+    style IR fill:#6c757d,color:#fff
+    style AIL fill:#6c757d,color:#fff
+    style FRU fill:#28a745,color:#fff
+    style PM fill:#6c757d,color:#fff
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Core Modules</h3>
+                <table>
+                    <tr><th>Module</th><th>Type</th><th>Responsibility</th></tr>
+                    <tr><td>Orchestrator</td><td><span class="badge badge-core">Core</span></td><td>Central facade coordinating all subsystems. Manages plugin lifecycle, provides unified sync/async APIs for image processing, face detection, and background removal. Falls back to default implementations when plugins are unavailable.</td></tr>
+                    <tr><td>ImageProcessor</td><td><span class="badge badge-core">Core</span></td><td>CPU-based image processing: exposure, contrast, brightness, gamma, temperature, tint, saturation, vibrance, highlights/shadows, detail enhancement, grayscale conversion, LUT color grading.</td></tr>
+                    <tr><td>FaceDetector</td><td><span class="badge badge-core">Core</span></td><td>Multi-strategy face detection using OpenCV DNN (YuNet ONNX model). Supports adaptive thresholds, CLAHE enhancement, forced upscale, extended rotation. Applies NMS and post-processing (bounding box expansion, aspect ratio correction, size/position filtering).</td></tr>
+                    <tr><td>Segmenter</td><td><span class="badge badge-core">Core</span></td><td>AI image segmentation using OpenCV DNN with u2netp ONNX model. Returns segmentation mask and composited image.</td></tr>
+                    <tr><td>ProcessingPipeline</td><td><span class="badge badge-core">Core</span></td><td>Async pipeline state machine (Loading, FaceDetection, ImageProcessing, Completed, Error) using QtConcurrent. Includes coroutine-based AsyncImageProcessor.</td></tr>
+                    <tr><td>EditStack</td><td><span class="badge badge-core">Core</span></td><td>Undo/redo stack managing EditOperation instances. Supports push, undo, redo, clear, batch apply-all.</td></tr>
+                    <tr><td>LUT</td><td><span class="badge badge-core">Core</span></td><td>CubeLUT struct parsing .cube format files. Trilinear interpolation for 3D color lookup tables.</td></tr>
+                    <tr><td>PluginManager</td><td><span class="badge badge-plugin">Plugin</span></td><td>Plugin discovery, loading (QPluginLoader), lifecycle, dependency resolution, performance monitoring.</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Component Interaction Sequence</h3>
+                <div class="diagram-container">
+                    <div class="scale-controls">
+                        <button class="scale-button" data-scale-delta="-10">-</button>
+                        <span class="scale-value">100%</span>
+                        <button class="scale-button" data-scale-delta="10">+</button>
+                        <button class="scale-button" data-reset-scale>R</button>
+                    </div>
+                    <div class="mermaid-placeholder" style="display:block;">Rendering interaction sequence...</div>
+                    <div class="mermaid" id="architecture-sequence">
+sequenceDiagram
+    participant U as User
+    participant MW as MainWindow
+    participant ORC as Orchestrator
+    participant AIL as AsyncImageLoader
+    participant IP as ImageProcessor
+    participant FD as FaceDetector
+    U->>MW: Open File
+    MW->>AIL: loadImageAsync(path)
+    AIL-->>MW: QImage loaded
+    MW->>ORC: detectFaces(image)
+    ORC->>FD: process(image)
+    FD-->>ORC: FaceDetectionResult
+    ORC-->>MW: detected faces
+    MW->>MW: display overlays
+    U->>MW: Adjust Slider
+    MW->>ORC: processImage(image, params)
+    ORC->>IP: apply(params)
+    IP-->>ORC: QImage processed
+    ORC-->>MW: processed image
+    MW->>MW: update GL view
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== DATA FLOW ===================== -->
+        <div id="dataflow" class="tab-content">
+            <h2>Data Flow</h2>
+            <p>End-to-end image processing pipeline from file load to GPU-accelerated display.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering data flow...</div>
+                <div class="mermaid" id="dataflow-diagram">
+graph TD
+    A["User opens file"] --> B{"ImageReader"}
+    B --> C["Format detection<br/>signature + extension"]
+    C --> D["LibRaw decoder<br/>for RAW formats"]
+    C --> E["Qt ImageReader<br/>for standard formats"]
+    D --> F["Decode to QImage"]
+    E --> F
+    F --> G["Auto-rotate<br/>EXIF orientation"]
+    G --> H["Metadata extraction"]
+    H --> I["Store original"]
+    I --> J["OpenGL texture upload"]
+    J --> K["GPU Shader Processing"]
+    K --> L["Vertex shader<br/>zoom, pan, resolution"]
+    L --> M["Fragment shader<br/>exposure, contrast, gamma<br/>grayscale, temperature<br/>detail enhancement"]
+    M --> N["Display"]
+    I --> O["CPU ImageProcessor"]
+    O --> P["applyExposure"]
+    P --> Q["applyContrast/Gamma"]
+    Q --> R["applyTemperature/Tint"]
+    R --> S["applySaturation/Vibrance"]
+    S --> T["applyHighlightsShadows"]
+    T --> U["applyDetails"]
+    U --> V["applyLUT"]
+    V --> N
+    I --> W["FaceDetector"]
+    W --> X["analyzeImageCharacteristics"]
+    X --> Y["getAdaptiveThresholds"]
+    Y --> Z["Multi-strategy DNN"]
+    Z --> AA["Non-Maximum Suppression"]
+    AA --> AB["PostProcessing"]
+    AB --> AC["Face Detection Result"]
+    AC --> N
+    style A fill:#667eea,color:#fff
+    style B fill:#ffc107,color:#333
+    style E fill:#6c757d,color:#fff
+    style F fill:#6c757d,color:#fff
+    style K fill:#28a745,color:#fff
+    style L fill:#28a745,color:#fff
+    style O fill:#667eea,color:#fff
+    style W fill:#dc3545,color:#fff
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Processing Parameters</h3>
+                <table>
+                    <tr><th>Parameter</th><th>Type</th><th>Range</th><th>Default</th></tr>
+                    <tr><td>Exposure</td><td>Float32</td><td>-3.0 to 3.0</td><td>0.0</td></tr>
+                    <tr><td>Contrast</td><td>Float32</td><td>0.0 to 3.0</td><td>1.0</td></tr>
+                    <tr><td>Brightness</td><td>Float32</td><td>-1.0 to 1.0</td><td>0.0</td></tr>
+                    <tr><td>Gamma</td><td>Float32</td><td>0.1 to 3.0</td><td>1.0</td></tr>
+                    <tr><td>Temperature</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Tint</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Saturation</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Vibrance</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Highlights</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Shadows</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                    <tr><td>Details</td><td>Float32</td><td>-100 to 100</td><td>0</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Face Detection Pipeline</h3>
+                <ul class="feature-list">
+                    <li>Image characteristics analysis for adaptive strategy selection</li>
+                    <li>Adaptive confidence thresholds based on image quality</li>
+                    <li>Primary detection: DNN-based with YuNet ONNX model</li>
+                    <li>Fallback strategies: enhanced CLAHE, forced upscale, extended rotation, original size</li>
+                    <li>Detection score calculation: size, position, aspect ratio heuristics</li>
+                    <li>Non-Maximum Suppression (IOU threshold: 0.3, keep highest confidence)</li>
+                    <li>Post-processing: bounding box expansion (10px), aspect ratio correction (1.3-1.5 target), size filtering (5%-80% of image), position filtering (upper portion bias)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ===================== CORE TYPES ===================== -->
+        <div id="coretypes" class="tab-content">
+            <h2>Core Types and Data Structures</h2>
+            <p>Semantic type aliases and key data structures used throughout the application.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering type relationships...</div>
+                <div class="mermaid" id="coretypes-diagram">
+erDiagram
+    ProcessingParams {
+        Float32 exposure
+        Float32 contrast
+        Float32 brightness
+        Float32 gamma
+        Bool grayscale
+        Float32 temperature
+        Float32 tint
+        Float32 saturation
+        Float32 vibrance
+        Float32 highlights
+        Float32 shadows
+        Float32 details
+        Bool autoDetectFaces
+        Bool enableLUT
+        QString lutFilePath
+    }
+    DetectedFace {
+        QRect rect
+        FaceType type
+        ConfidenceValue confidence
+        vector_QPointF landmarks
+    }
+    FaceDetectionResult {
+        vector_DetectedFace faces
+        Bool success
+        QString errorMessage
+        ProcessingTimeMs processingTimeMs
+    }
+    SegmentationResult {
+        QImage mask
+        QImage composited
+        Float32 confidence
+    }
+    EditOperation {
+        QString description
+        Bool apply
+        Bool undo
+    }
+    CubeLUT {
+        Int32 size
+        Int32 channels
+        vector data
+        Bool isValid
+    }
+    FaceDetectionResult ||--o{ DetectedFace : contains
+    EditOperation ||--|| ExposureOperation : implements
+    FaceDetector ||--|| ProcessingParams : configures
+    ImageProcessor ||--|| ProcessingParams : uses
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Semantic Type Aliases</h3>
+                <table>
+                    <tr><th>Alias</th><th>Underlying Type</th><th>Usage</th></tr>
+                    <tr><td>Bool</td><td>bool</td><td>Semantic boolean for API boundaries</td></tr>
+                    <tr><td>Int32</td><td>int</td><td>32-bit signed integer for dimensions, counts</td></tr>
+                    <tr><td>UInt32</td><td>unsigned int</td><td>32-bit unsigned integer</td></tr>
+                    <tr><td>Int64</td><td>long long</td><td>64-bit signed integer</td></tr>
+                    <tr><td>Float32</td><td>float</td><td>32-bit floating point for image parameters</td></tr>
+                    <tr><td>Float64</td><td>double</td><td>64-bit floating point for precision calculations</td></tr>
+                    <tr><td>ConfidenceValue</td><td>Float64</td><td>Detection confidence score (0.0 to 1.0)</td></tr>
+                    <tr><td>ConfidenceThreshold</td><td>Float64</td><td>Minimum confidence to accept detection</td></tr>
+                    <tr><td>FaceSizeMin</td><td>Int32</td><td>Minimum face size in pixels</td></tr>
+                    <tr><td>FaceSizeMax</td><td>Int32</td><td>Maximum face size in pixels</td></tr>
+                    <tr><td>RotationAngle</td><td>Int32</td><td>Image rotation angle in degrees</td></tr>
+                    <tr><td>ScaleFactor</td><td>Float64</td><td>Image scale multiplier</td></tr>
+                    <tr><td>StrategyIndex</td><td>Int32</td><td>Detection strategy identifier</td></tr>
+                    <tr><td>DetectionScore</td><td>Float64</td><td>Aggregated detection quality score</td></tr>
+                    <tr><td>ProcessingTimeMs</td><td>Int64</td><td>Processing duration in milliseconds</td></tr>
+                    <tr><td>ExposureValue</td><td>Float32</td><td>Exposure adjustment value</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Key Enumerations</h3>
+                <table>
+                    <tr><th>Enum</th><th>Values</th><th>Description</th></tr>
+                    <tr><td>FaceType</td><td>Unknown, Frontal, Profile</td><td>Classification of detected face orientation</td></tr>
+                    <tr><td>PipelineStage</td><td>Loading, FaceDetection, ImageProcessing, Completed, Error</td><td>State machine for async processing pipeline</td></tr>
+                    <tr><td>ImageFormat</td><td>JPEG, PNG, TIFF, BMP, RAW, HEIC, WebP</td><td>Supported image file formats</td></tr>
+                    <tr><td>HistogramChannel</td><td>Luminance, Red, Green, Blue, RGB</td><td>Histogram display channel selection</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===================== TESTING ===================== -->
+        <div id="testing" class="tab-content">
+            <h2>Testing</h2>
+            <p>The project uses Catch2 v3 for unit, integration, benchmark, stress, and regression testing. Tests are organized by component and category.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering test structure...</div>
+                <div class="mermaid" id="testing-diagram">
+graph TD
+    A["GlanceRawViewer Tests<br/>Catch2 v3"]
+    A --> B["Unit Tests"]
+    A --> C["Integration Tests"]
+    A --> D["Benchmark Tests"]
+    A --> E["Stress Tests"]
+    A --> F["Visual Regression"]
+    A --> G["Shader Tests"]
+    B --> H["TestFaceDetector<br/>13 ground truth images<br/>IoU bounding box matching"]
+    B --> I["TestImageProcessor<br/>12 operations<br/>grayscale, exposure, contrast, gamma<br/>saturation, temp, tint, vibrance<br/>highlights/shadows, details, LUT"]
+    B --> J["TestImageReader<br/>7 tests<br/>format detection, validation, error"]
+    B --> K["TestAsyncImageLoader<br/>3 tests<br/>queue, cache, lifecycle"]
+    B --> L["TestMainWindow<br/>2 compilation tests"]
+    C --> M["IntegrationTests<br/>5 tests<br/>load + process, full pipeline<br/>batch, format detection, LUT"]
+    D --> N["PerformanceBenchmarks<br/>3 micro-benchmarks<br/>1920x1080 images"]
+    E --> O["StressTests<br/>7 tests<br/>many small, large 4096x4096<br/>memory leak, conversion cycles<br/>model load/unload, repeated seg"]
+    F --> P["VisualRegressionTests<br/>2 MD5 hash tests<br/>grayscale, exposure"]
+    G --> Q["ShaderTests<br/>2 tests<br/>OpenGL context, version 3.3"]
+    style A fill:#667eea,color:#fff
+    style B fill:#28a745,color:#fff
+    style C fill:#667eea,color:#fff
+    style D fill:#ffc107,color:#333
+    style E fill:#dc3545,color:#fff
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Test Infrastructure</h3>
+                <table>
+                    <tr><th>Component</th><th>Description</th></tr>
+                    <tr><td>main_test.cpp</td><td>Custom main initializing global QApplication before running Catch2 tests</td></tr>
+                    <tr><td>TestDataGenerator</td><td>Programmatic generation of synthetic test images (basic, portrait, landscape, noise, gradient, high/low contrast, large, corrupted, exotic)</td></tr>
+                    <tr><td>TestConstants.h</td><td>Shared constants: synthetic image dimensions, colors, face feature positions, detection thresholds</td></tr>
+                    <tr><td>TestData/</td><td>13 real face images (300.jpg through 300_12.jpg), 3 LUT .cube files</td></tr>
+                    <tr><td>BenchmarkComparison</td><td>Benchmark comparison utilities with statistical analysis</td></tr>
+                    <tr><td>TestReportGenerator</td><td>Test report generation in markdown/HTML format</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Running Tests</h3>
+                <table>
+                    <tr><th>Command</th><th>Description</th></tr>
+                    <tr><td><code>ctest --preset local-debug</code></td><td>Run all tests via CTest</td></tr>
+                    <tr><td><code>./build/local-debug/GlanceRawViewer_Tests</code></td><td>Run all tests directly</td></tr>
+                    <tr><td><code>./GlanceRawViewer_Tests [facedetector]</code></td><td>Run only face detector tests</td></tr>
+                    <tr><td><code>./GlanceRawViewer_Tests [performance]</code></td><td>Run only performance benchmarks</td></tr>
+                    <tr><td><code>./GlanceRawViewer_Tests --verbosity high</code></td><td>Run with detailed output</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===================== BUILD AND DEPLOY ===================== -->
+        <div id="build" class="tab-content">
+            <h2>Build and Deploy</h2>
+            <p>The project uses CMake 3.28+ with C++23 modules support. Multiple build presets are available for different compilers and configurations.</p>
+
+            <div class="diagram-container">
+                <div class="scale-controls">
+                    <button class="scale-button" data-scale-delta="-10">-</button>
+                    <span class="scale-value">100%</span>
+                    <button class="scale-button" data-scale-delta="10">+</button>
+                    <button class="scale-button" data-reset-scale>R</button>
+                </div>
+                <div class="mermaid-placeholder" style="display:block;">Rendering build pipeline...</div>
+                <div class="mermaid" id="build-diagram">
+graph TD
+    A["Developer"] --> B["git push"]
+    B --> C["GitHub Actions CI"]
+    C --> D{"Build Configuration"}
+    D -->|MSVC| E["Windows Debug/Release"]
+    D -->|Clang| F["Clang Debug/Release"]
+    D -->|Clang Modules| G["Clang + C++23 Modules"]
+    E --> H["Build GlanceRawViewer"]
+    E --> I["Build GlanceRawViewer Tests"]
+    H --> J{"Run Tests"}
+    I --> J
+    J --> K["Run CTest"]
+    K --> L["Unit Tests"]
+    K --> M["Integration Tests"]
+    K --> N["Performance Benchmarks"]
+    L --> O["All Passed"]
+    M --> O
+    N --> O
+    O --> P["Artifact: exe + DLLs"]
+    style A fill:#667eea,color:#fff
+    style C fill:#28a745,color:#fff
+    style E fill:#667eea,color:#fff
+    style F fill:#ffc107,color:#333
+    style G fill:#dc3545,color:#fff
+    style H fill:#6c757d,color:#fff
+    style K fill:#28a745,color:#fff
+    style O fill:#28a745,color:#fff
+    style P fill:#667eea,color:#fff
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <h3>Build Presets</h3>
+                <table>
+                    <tr><th>Preset</th><th>Generator</th><th>Compiler</th><th>C++ Standard</th><th>Modules</th></tr>
+                    <tr><td>msvc-debug</td><td>Ninja</td><td>MSVC 2022</td><td>C++23</td><td>ON</td></tr>
+                    <tr><td>msvc-release</td><td>Ninja</td><td>MSVC 2022</td><td>C++23</td><td>ON</td></tr>
+                    <tr><td>clang-debug</td><td>Ninja</td><td>Clang 16+</td><td>C++20</td><td>OFF</td></tr>
+                    <tr><td>clang-release</td><td>Ninja</td><td>Clang 16+</td><td>C++20</td><td>OFF</td></tr>
+                    <tr><td>clang-modules-debug</td><td>Ninja</td><td>Clang 16+</td><td>C++23</td><td>ON</td></tr>
+                    <tr><td>clang-modules-release</td><td>Ninja</td><td>Clang 16+</td><td>C++23</td><td>ON</td></tr>
+                    <tr><td>local-debug</td><td>Ninja</td><td>MSVC 2022</td><td>C++23</td><td>ON</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Build Commands</h3>
+                <table>
+                    <tr><th>Step</th><th>Command</th></tr>
+                    <tr><td>Configure</td><td><code>cmake --preset local-debug</code></td></tr>
+                    <tr><td>Build</td><td><code>cmake --build --preset local-debug</code></td></tr>
+                    <tr><td>Run</td><td><code>./build/local-debug/GlanceRawViewer.exe</code></td></tr>
+                    <tr><td>Test</td><td><code>ctest --preset local-debug</code></td></tr>
+                    <tr><td>Configure (MSVC Release)</td><td><code>cmake --preset msvc-release</code></td></tr>
+                    <tr><td>Build (MSVC Release)</td><td><code>cmake --build --preset msvc-release</code></td></tr>
+                    <tr><td>Configure (Clang)</td><td><code>cmake --preset clang-debug</code></td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>Dependencies</h3>
+                <table>
+                    <tr><th>Library</th><th>Required</th><th>vcpkg Port</th><th>Purpose</th></tr>
+                    <tr><td>Qt6</td><td>Yes</td><td>qt6 (core, widgets, opengl, concurrent, printsupport, network)</td><td>GUI framework</td></tr>
+                    <tr><td>OpenCV</td><td>Yes</td><td>opencv (core, imgproc, dnn, photo, objdetect)</td><td>Computer vision, face detection, segmentation</td></tr>
+                    <tr><td>LibRaw</td><td>Yes</td><td>libraw</td><td>RAW camera format decoding</td></tr>
+                    <tr><td>Intel TBB</td><td>Yes</td><td>tbb</td><td>Parallel processing</td></tr>
+                    <tr><td>Catch2</td><td>No</td><td>catch2</td><td>Unit testing framework (tests disabled if not found)</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-section">
+                <h3>CI/CD Pipeline (GitHub Actions)</h3>
+                <p>Located in <code>.github/workflows/ci.yml</code> and <code>code-quality.yml</code>. The CI pipeline automatically builds and tests the project on each push, running the full test suite.</p>
+            </div>
+
+            <div class="feature-section">
+                <h3>Pre-commit Workflow</h3>
+                <p>The project provides scripts for pre-commit checks in <code>scripts/pre-commit.bat/.sh</code> and a full code audit in <code>scripts/full-audit.bat/.sh</code>. Workflow documentation is available in the <code>workflows/</code> directory:</p>
+                <ul class="feature-list">
+                    <li>workflows/bug-fix.md - Bug fix workflow</li>
+                    <li>workflows/new-feature.md - New feature workflow</li>
+                    <li>workflows/pre-commit.md - Pre-commit checks</li>
+                    <li>workflows/pre-deploy.md - Pre-deployment verification</li>
+                    <li>workflows/release-prep.md - Release preparation</li>
+                    <li>workflows/full-audit.md - Full code audit</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="mermaid-height-util.js"></script>
+<script>
+mermaid.initialize({
+    startOnLoad: false,
+    theme: 'default',
+    themeVariables: {
+        primaryColor: '#667eea',
+        primaryTextColor: '#333',
+        lineColor: '#667eea',
+        secondaryColor: '#764ba2',
+        fontSize: '14px'
+    },
+    flowchart: { useMaxWidth: false, htmlLabels: true }
+});
+
+const adjuster = new MermaidHeightAdjuster();
+adjuster.setupTabSwitching();
+adjuster.setupScaleControls();
+
+document.addEventListener('DOMContentLoaded', () => {
+    const activeTab = document.querySelector('.nav-tab.active');
+    if (activeTab) {
+        const tabId = activeTab.getAttribute('data-tab');
+        adjuster.renderAndScale(tabId);
+    }
+});
+</script>
+</body>
+</html>

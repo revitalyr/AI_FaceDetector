@@ -1,0 +1,455 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  BUILD_TYPE: Release
+  QT_VERSION: 6.5.3
+
+jobs:
+  build-and-test:
+    name: Build and Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            test_executable: ./build/GlanceRawViewer_Tests
+            demo_executable: ./build/GlanceRawViewer_Demo
+          - os: windows-latest
+            cmake_args: -DCMAKE_BUILD_TYPE=Release -A x64
+            test_executable: ./build/GlanceRawViewer_Tests.exe
+            demo_executable: ./build/GlanceRawViewer_Demo.exe
+          - os: macos-latest
+            cmake_args: -DCMAKE_BUILD_TYPE=Release
+            test_executable: ./build/GlanceRawViewer_Tests
+            demo_executable: ./build/GlanceRawViewer_Demo
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'macos-latest' && 'mac' || 'linux' }}
+        target: ${{ matrix.os == 'windows-latest' && 'desktop' || 'desktop' }}
+        arch: ${{ matrix.os == 'windows-latest' && 'win64_mingw' || '' }}
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          build-essential \
+          libgl1-mesa-dev \
+          libdlib-dev \
+          libopencv-dev \
+          pkg-config
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install cmake ninja dlib opencv pkg-config
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install cmake ninja dlib opencv pkgconfiglite
+
+    - name: Configure CMake
+      run: |
+        cmake -B build ${{ matrix.cmake_args }} \
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+          -DCMAKE_INSTALL_PREFIX=install
+
+    - name: Build
+      run: |
+        cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+    - name: Run Unit Tests
+      run: |
+        cd build
+        ${{ matrix.test_executable }} --output junit
+
+    - name: Run Demo (test mode)
+      run: |
+        cd build
+        ${{ matrix.demo_executable }} --test-mode --no-gui
+
+    - name: Generate Test Reports
+      run: |
+        cd build
+        mkdir -p test-reports
+        ${{ matrix.test_executable }} --generate-reports --output-dir test-reports
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}
+        path: |
+          build/test-reports/
+          build/*.xml
+          build/*.json
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.os }}
+        path: |
+          build/GlanceRawViewer*
+          build/*.exe
+          build/*.app
+
+    - name: Code Coverage (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd build
+        cmake --build . --target coverage
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload Coverage to Codecov
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./build/coverage.info
+        flags: unittests
+        name: codecov-umbrella
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libdlib-dev
+
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel
+
+    - name: Run Performance Benchmarks
+      run: |
+        cd build
+        ./GlanceRawViewer_Tests -functions PerformanceBenchmarks::benchmarkImageProcessing
+
+    - name: Store Performance Results
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        tool: 'pytest'
+        output-file-path: build/performance-results.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        comment-on-alert: true
+        alert-threshold: '200%'
+        fail-on-alert: true
+
+  memory-tests:
+    name: Memory and Stress Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build valgrind libgl1-mesa-dev
+
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_MEMORY_CHECKS=ON
+        cmake --build build --parallel
+
+    - name: Run Stress Tests
+      run: |
+        cd build
+        timeout 600 ./GlanceRawViewer_Tests -functions StressTests::testMemoryStress
+
+    - name: Run Valgrind (if available)
+      run: |
+        cd build
+        if command -v valgrind &> /dev/null; then
+          timeout 300 valgrind --leak-check=full --error-exitcode=1 ./GlanceRawViewer_Tests -functions TestImageProcessor::testApplyExposure
+        else
+          echo "Valgrind not available, skipping memory leak detection"
+        fi
+
+  sanitizer-tests:
+    name: Sanitizer Tests (ASan/TSan)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libdlib-dev libopencv-dev
+
+    - name: Build with AddressSanitizer
+      run: |
+        cmake -B build-asan \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+          -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+          -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=address"
+        cmake --build build-asan --parallel
+
+    - name: Run Tests with AddressSanitizer
+      run: |
+        cd build-asan
+        ASAN_OPTIONS=detect_leaks=1:halt_on_error=0 ./GlanceRawViewer_Tests
+
+    - name: Build with ThreadSanitizer
+      run: |
+        cmake -B build-tsan \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="-fsanitize=thread -g" \
+          -DCMAKE_C_FLAGS="-fsanitize=thread -g" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread" \
+          -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=thread"
+        cmake --build build-tsan --parallel
+
+    - name: Run Tests with ThreadSanitizer
+      run: |
+        cd build-tsan
+        TSAN_OPTIONS=halt_on_error=0 ./GlanceRawViewer_Tests -functions Multithreading
+
+  visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libdlib-dev imagemagick
+
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel
+
+    - name: Run Visual Regression Tests
+      run: |
+        cd build
+        ./GlanceRawViewer_Tests -functions VisualRegressionTests::testImageProcessingRegression
+
+    - name: Upload Reference Images
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: visual-regression-diffs
+        path: build/visual-regression/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v2
+      with:
+        languages: cpp
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libdlib-dev xvfb
+
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel
+
+    - name: Run Integration Tests with Xvfb
+      run: |
+        cd build
+        xvfb-run -a ./GlanceRawViewer_Tests -functions IntegrationTests::testCompleteImageProcessingWorkflow
+
+    - name: Run Demo Integration Test
+      run: |
+        cd build
+        timeout 30 xvfb-run -a ./GlanceRawViewer_Demo --test-mode --auto-close
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: [build-and-test, integration-tests]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate Documentation
+      run: |
+        mkdir -p docs/build
+        cd docs
+        doxygen Doxyfile 2>/dev/null || echo "Doxygen not available, skipping API docs"
+        cd ..
+        
+        # Generate test reports
+        mkdir -p docs/reports
+        echo "Test reports will be generated here" > docs/reports/README.md
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-and-test, integration-tests, performance-tests]
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libdlib-dev
+
+    - name: Build Release
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --parallel
+
+    - name: Package Application
+      run: |
+        cd build
+        mkdir -p Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}
+        cp GlanceRawViewer Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}/
+        cp -r ../Shaders Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}/
+        cp ../README.md Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}/
+        cp ../LICENSE Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}/ 2>/dev/null || echo "No LICENSE file"
+        tar -czf Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}-linux.tar.gz Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}/
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./build/Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}-linux.tar.gz
+        asset_name: Glance-Raw-to-GPU-Viewer-${{ github.event.release.tag_name }}-linux.tar.gz
+        asset_content_type: application/gzip
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [build-and-test, performance-tests, memory-tests, visual-regression, integration-tests]
+    if: always()
+    
+    steps:
+    - name: Notify on Success
+      if: ${{ needs.build-and-test.result == 'success' && needs.performance-tests.result == 'success' && needs.integration-tests.result == 'success' }}
+      run: |
+        echo "✅ All tests passed successfully!"
+        echo "Build and test pipeline completed successfully."
+
+    - name: Notify on Failure
+      if: ${{ needs.build-and-test.result == 'failure' || needs.performance-tests.result == 'failure' || needs.integration-tests.result == 'failure' }}
+      run: |
+        echo "❌ Some tests failed!"
+        echo "Please check the individual job logs for details."
+        exit 1

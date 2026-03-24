@@ -1,0 +1,150 @@
+# Build directories
+build/
+build*/
+cmake-build-*/
+out/
+
+# IDE files
+.vscode/
+.idea/
+*.vcxproj*
+*.sln
+*.user
+*.vcxproj.filters
+
+# Qt specific
+*.pro.user*
+*.qbs.user*
+*.moc
+*.moc.cpp
+*.qrc.cpp
+*.ui.cpp
+Makefile*
+*-build-*
+*.qm
+*.prl
+
+# Object files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Test outputs
+*.xml
+*.json
+test-results/
+test-reports/
+coverage/
+coverage-*/
+*.gcda
+*.gcno
+*.info
+*.log
+
+# Demo outputs
+demo-data/
+temp/
+*.tmp
+
+# Documentation
+docs/build/
+docs/html/
+docs/latex/
+*.dox
+*.tag
+
+# Platform specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Dependencies (if using vcpkg)
+vcpkg_installed/
+vcpkg/
+
+# Package files
+*.deb
+*.rpm
+*.dmg
+*.pkg
+*.tar.gz
+*.zip
+
+# Performance and benchmark data
+benchmark-results/
+performance-baseline.json
+regression-data/
+
+# Visual regression data
+visual-regression/
+reference-images/
+diff-images/
+
+# Memory analysis
+valgrind-*.log
+massif-*.out
+
+# Profiling data
+*.prof
+*.trace
+
+# Report generator output
+GlanceTestReport_*
+test-reports/
+
+# CMake specific
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+*_autogen/
+*.cmake
+
+# Qt Linguist
+*.ts
+*.qm
+
+# Shader compiled files
+*.spv
+*.comp
+*.vert
+*.frag
+
+# Downloaded models and binaries
+models/onnxruntime/
+models/*.onnx
+
+# Temporary files
+*.bak
+*.backup
+*.old
+
+# Local configuration
+local.properties
+config.local
+
+# Logs
+*.log
+*.out
+
+# Generated files
+generated/
+gen/
+
+# Editor backup files
+*~
+*.orig
+*.rej
+
+# Submodule tracking
+.git/modules/
+
+# CI/CD artifacts
+.github/workflows/temp/
