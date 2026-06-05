@@ -166,6 +166,3 @@ The plugin architecture allows extending functionality through the `Orchestrator
 - LibRaw (for RAW format support)
 - CMake 3.28+ (required for C++23 modules)
 
-## License
-
-Proprietary - All rights reserved.
